@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 	"testing"
@@ -20,7 +21,7 @@ func TestIntegrationSign(t *testing.T) {
 	keys := url.Values{}
 	keys.Set("app_api_key", authyAppApiKey)
 	keys.Set("access_key", authyAccessKey)
-	req, err := http.NewRequest("GET", "https://api.authy.com/dashboard/json/application/webhooks", strings.NewReader(keys.Encode()))
+	req, err := http.NewRequest("GET", "https://api.authy.com/dashboard/json/application/webhooks", strings.NewReader(formEncode(keys)))
 	if err != nil {
 		t.Errorf("error creating list request: %s", err)
 	}
@@ -57,11 +58,10 @@ func TestIntegrationSign(t *testing.T) {
 	payload.Set("url", "http://localhost:6969/callback")
 	payload.Add("events[]", "user_account_deleted")
 	payload.Add("events[]", "device_registration_completed")
-	unescapedPayload, err := url.QueryUnescape(payload.Encode())
 	if err != nil {
 		t.Errorf("error unescaping create request: %s", err)
 	}
-	req, err = http.NewRequest("POST", "https://api.authy.com/dashboard/json/application/webhooks", strings.NewReader(unescapedPayload))
+	req, err = http.NewRequest("POST", "https://api.authy.com/dashboard/json/application/webhooks", strings.NewReader(formEncode(payload)))
 	if err != nil {
 		t.Errorf("error creating create request: %s", err)
 	}
@@ -99,7 +99,7 @@ func TestIntegrationSign(t *testing.T) {
 	payload = url.Values{}
 	payload.Set("app_api_key", authyAppApiKey)
 	payload.Set("access_key", authyAccessKey)
-	req, err = http.NewRequest("DELETE", fmt.Sprintf("https://api.authy.com/dashboard/json/application/webhooks/%s", createResponseData.Webhook.Id), strings.NewReader(payload.Encode()))
+	req, err = http.NewRequest("DELETE", fmt.Sprintf("https://api.authy.com/dashboard/json/application/webhooks/%s", createResponseData.Webhook.Id), strings.NewReader(formEncode(payload)))
 	if err != nil {
 		t.Errorf("error creating delete request: %s", err)
 	}
@@ -129,4 +129,28 @@ func TestIntegrationSign(t *testing.T) {
 	if !deleteResponseData.Success {
 		t.Errorf("delete failed: %s", deleteResponseData.Message)
 	}
+}
+
+func formEncode(values url.Values) string {
+	if values == nil {
+		return ""
+	}
+	var buf strings.Builder
+	keys := make([]string, 0, len(values))
+	for k := range values {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	for _, k := range keys {
+		vs := values[k]
+		for _, v := range vs {
+			if buf.Len() > 0 {
+				buf.WriteByte('&')
+			}
+			buf.WriteString(k)
+			buf.WriteByte('=')
+			buf.WriteString(v)
+		}
+	}
+	return buf.String()
 }
