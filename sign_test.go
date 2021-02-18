@@ -38,7 +38,8 @@ func TestIntegrationSign(t *testing.T) {
 	}
 
 	type listResponse struct {
-		Success bool `json:"success"`
+		Success bool   `json:"success"`
+		Message string `json:"message"`
 	}
 	var listResponseData listResponse
 	err = json.NewDecoder(resp.Body).Decode(&listResponseData)
@@ -47,7 +48,7 @@ func TestIntegrationSign(t *testing.T) {
 	}
 
 	if !listResponseData.Success {
-		t.Error("list failed")
+		t.Errorf("list failed: %s", listResponseData.Message)
 	}
 
 	payload := url.Values{}
