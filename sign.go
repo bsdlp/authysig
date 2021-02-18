@@ -2,13 +2,13 @@ package authysig
 
 import (
 	"crypto/hmac"
+	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
 	"io"
+	"math/big"
 	"net/http"
 	"net/url"
-	"strconv"
-	"time"
 )
 
 func sign(req *http.Request, parameters url.Values, key []byte, nonce string) error {
@@ -58,6 +58,10 @@ func sign(req *http.Request, parameters url.Values, key []byte, nonce string) er
 }
 
 func Sign(req *http.Request, parameters url.Values, key []byte) error {
-	nonce := strconv.FormatInt(time.Now().UnixNano(), 10)
-	return sign(req, parameters, key, nonce)
+	nonce, err := rand.Int(rand.Reader, big.NewInt(1<<31-1))
+	if err != nil {
+		return err
+	}
+
+	return sign(req, parameters, key, nonce.String())
 }
