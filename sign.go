@@ -4,60 +4,60 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
+	"io"
 	"net/http"
+	"net/url"
 	"strconv"
-	"strings"
 	"time"
 )
 
-func sign(req *http.Request, key []byte, nonce string) error {
-	var data strings.Builder
-	_, err := data.WriteString(nonce)
+func sign(req *http.Request, parameters url.Values, key []byte, nonce string) error {
+	mac := hmac.New(sha256.New, key)
+	_, err := io.WriteString(mac, nonce)
 	if err != nil {
 		return err
 	}
 
-	_, err = data.WriteString("|")
+	_, err = io.WriteString(mac, "|")
 	if err != nil {
 		return err
 	}
 
-	_, err = data.WriteString(req.Method)
+	_, err = io.WriteString(mac, req.Method)
 	if err != nil {
 		return err
 	}
 
-	_, err = data.WriteString("|")
+	_, err = io.WriteString(mac, "|")
 	if err != nil {
 		return err
 	}
 
 	u := *req.URL
-	query := u.Query()
 	u.RawQuery = ""
-	_, err = data.WriteString(u.String())
+	_, err = io.WriteString(mac, u.String())
 	if err != nil {
 		return err
 	}
 
-	_, err = data.WriteString("|")
+	_, err = io.WriteString(mac, "|")
 	if err != nil {
 		return err
 	}
 
-	_, err = data.WriteString(query.Encode())
+	_, err = io.WriteString(mac, parameters.Encode())
 	if err != nil {
 		return err
 	}
 
-	digest := hmac.New(sha256.New, key).Sum([]byte(data.String()))
+	digest := mac.Sum(nil)
 	req.Header.Set("X-Authy-Signature", base64.StdEncoding.EncodeToString(digest))
 	req.Header.Set("X-Authy-Signature-Nonce", nonce)
 
 	return nil
 }
 
-func Sign(req *http.Request, key []byte) error {
+func Sign(req *http.Request, parameters url.Values, key []byte) error {
 	nonce := strconv.FormatInt(time.Now().UnixNano(), 10)
-	return sign(req, key, nonce)
+	return sign(req, parameters, key, nonce)
 }

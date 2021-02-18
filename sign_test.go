@@ -23,7 +23,7 @@ func TestIntegrationSign(t *testing.T) {
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
-	err = Sign(req, []byte(authyApiSigningKey))
+	err = Sign(req, keys, []byte(authyApiSigningKey))
 	if err != nil {
 		t.Errorf("error signing list request: %s", err)
 	}
